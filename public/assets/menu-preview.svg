@@ -1,0 +1,14 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="16px/Eye" clip-path="url(#clip0_0_108)">
+<g id="Area">
+</g>
+<g id="Icon-eye">
+<path id="Vector" d="M6.5 8C6.5 8.39782 6.65804 8.77936 6.93934 9.06066C7.22064 9.34196 7.60218 9.5 8 9.5C8.39782 9.5 8.77936 9.34196 9.06066 9.06066C9.34196 8.77936 9.5 8.39782 9.5 8C9.5 7.60218 9.34196 7.22064 9.06066 6.93934C8.77936 6.65804 8.39782 6.5 8 6.5C7.60218 6.5 7.22064 6.65804 6.93934 6.93934C6.65804 7.22064 6.5 7.60218 6.5 8ZM14.75 8C12.95 11 10.7 12.5 8 12.5C5.3 12.5 3.05 11 1.25 8C3.05 5 5.3 3.5 8 3.5C10.7 3.5 12.95 5 14.75 8Z" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke="#353740"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_0_108">
+<rect width="16" height="16" fill="white"/>
+</clipPath>
+</defs>
+</svg>

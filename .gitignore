@@ -1,0 +1,4 @@
+node_modules
+dist
+.figma-source
+.DS_Store
