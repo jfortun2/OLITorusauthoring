@@ -386,9 +386,10 @@ export default function App() {
                   )}
                   {visible.map((node) =>
                     node.type === "page" ? (
+                      <div className="outline-block" key={node.id}>
                       <PageRow
-                        key={node.id}
                         title={node.title}
+                        scoringType={node.scoringType}
                         depth="top"
                         thumbnail={node.thumbnail}
                         onEditThumbnail={() => setThumbnailId(node.id)}
@@ -420,6 +421,7 @@ export default function App() {
                         onDragOver={(place) => setDropHint({ id: node.id, place })}
                         onDrop={() => onDrop(node.id)}
                       />
+                      </div>
                     ) : (
                       <UnitBlock
                         key={node.id}
@@ -687,8 +689,13 @@ function UnitBlock({
 }) {
   const menuId = `unit-${unit.id}`
   const createId = `create-${unit.id}`
+  const modules = unit.items.filter((item) => item.type === "module").length
+  const pages = unit.items.reduce((sum, item) => sum + (item.type === "page" ? 1 : item.pages.length), 0)
+  const summary = [modules ? countLabel(modules, "module", "modules") : "", countLabel(pages, "page", "pages")]
+    .filter(Boolean)
+    .join(" · ")
   return (
-    <div>
+    <div className="outline-block">
       <div
         className={rowClass("unit", dragId.current === unit.id, dropHint?.id === unit.id ? dropHint.place : null)}
         onDragOver={(event) => {
@@ -709,10 +716,13 @@ function UnitBlock({
           <img className={unit.expanded ? "open" : ""} src="/assets/icon-chevron-right.svg" alt="" />
         </button>
         <ThumbnailButton title={unit.title} src={unit.thumbnail} onClick={() => onEditThumbnail(unit.id)} />
-        <i className="fas fa-archive kind-icon" aria-hidden="true" />
-        <button className="row-title" type="button" onClick={onToggle}>
-          {unit.title}
-        </button>
+        <div className="row-copy">
+          <span className="level">Unit</span>
+          <button className="row-title unit-title" type="button" onClick={onToggle}>
+            {unit.title}
+          </button>
+          <span className="row-count">{summary}</span>
+        </div>
         <div className="row-actions">
           <div className="menu-anchor">
             <button
@@ -748,10 +758,11 @@ function UnitBlock({
           />
         </div>
       </div>
-      {unit.expanded &&
-        unit.items.map((item) =>
+      {unit.expanded && unit.items.length > 0 && (
+        <div className="unit-children">
+          {unit.items.map((item) =>
           item.type === "module" ? (
-            <div key={item.id}>
+            <div className="module-block" key={item.id}>
               <div
                 className={rowClass("module", dragId.current === item.id, dropHint?.id === item.id ? dropHint.place : null)}
                 onDragOver={(event) => {
@@ -773,11 +784,19 @@ function UnitBlock({
                 >
                   <img className={item.expanded ? "open" : ""} src="/assets/icon-chevron-right.svg" alt="" />
                 </button>
-                <ThumbnailButton title={item.title} src={item.thumbnail} onClick={() => onEditThumbnail(item.id)} />
-                <i className="fas fa-archive kind-icon" aria-hidden="true" />
-                <button className="row-title" type="button" onClick={() => onToggleModule(item.id)}>
-                  {item.title}
-                </button>
+                <ThumbnailButton
+                  title={item.title}
+                  src={item.thumbnail}
+                  size="small"
+                  onClick={() => onEditThumbnail(item.id)}
+                />
+                <div className="row-copy">
+                  <span className="level">Module</span>
+                  <button className="row-title module-title" type="button" onClick={() => onToggleModule(item.id)}>
+                    {item.title}
+                  </button>
+                  <span className="row-count">{countLabel(item.pages.length, "page", "pages")}</span>
+                </div>
                 <div className="row-actions">
                   <div className="menu-anchor">
                     <button
@@ -813,11 +832,13 @@ function UnitBlock({
                   />
                 </div>
               </div>
-              {item.expanded &&
-                item.pages.map((page) => (
+              {item.expanded && item.pages.length > 0 && (
+                <div className="module-children">
+                {item.pages.map((page) => (
                   <PageRow
                     key={page.id}
                     title={page.title}
+                    scoringType={page.scoringType}
                     depth="page"
                     menuOpen={openMenu === `page-${page.id}`}
                     dragging={dragId.current === page.id}
@@ -833,11 +854,14 @@ function UnitBlock({
                     onDrop={() => onDrop(page.id)}
                   />
                 ))}
+                </div>
+              )}
             </div>
           ) : (
             <PageRow
               key={item.id}
               title={item.title}
+              scoringType={item.scoringType}
               depth="unit"
               menuOpen={openMenu === `page-${item.id}`}
               dragging={dragId.current === item.id}
@@ -852,12 +876,19 @@ function UnitBlock({
             />
           ),
         )}
+        </div>
+      )}
     </div>
   )
 }
 
+function countLabel(count: number, singular: string, plural: string) {
+  return `${count} ${count === 1 ? singular : plural}`
+}
+
 function PageRow({
   title,
+  scoringType,
   depth,
   thumbnail,
   onEditThumbnail,
@@ -873,6 +904,7 @@ function PageRow({
   onDrop,
 }: {
   title: string
+  scoringType: ScoringType
   depth: "top" | "unit" | "page"
   thumbnail?: string
   onEditThumbnail?: () => void
@@ -900,14 +932,16 @@ function PageRow({
       }}
     >
       <Grip label={title} onDragStart={onDragStart} onDragEnd={onDragEnd} />
-      {depth === "top" && <span className="row-spacer" aria-hidden="true" />}
+      {depth !== "page" && <span className="row-spacer" aria-hidden="true" />}
       {onEditThumbnail && (
         <ThumbnailButton title={title} src={thumbnail} onClick={onEditThumbnail} />
       )}
-      <i className="far fa-file-alt kind-icon" aria-hidden="true" />
-      <button className="page-link" type="button" onClick={onOpen}>
-        {title}
-      </button>
+      <div className="row-copy">
+        <span className="level">{scoringType === "practice" ? "Practice page" : "Scored page"}</span>
+        <button className="page-link" type="button" onClick={onOpen}>
+          {title}
+        </button>
+      </div>
       <MoreMenu
         open={menuOpen}
         page
@@ -1031,7 +1065,17 @@ function CreateMenu({
 
 function rowClass(kind: string, dragging: boolean, place: DropPlace | null) {
   const depth =
-    kind === "module" ? "module" : kind === "page" ? "page" : kind === "unit-page" ? "unit-page" : kind === "top" ? "top-page" : ""
+    kind === "module"
+      ? "module"
+      : kind === "page"
+        ? "page"
+        : kind === "unit-page"
+          ? "unit-page"
+          : kind === "top"
+            ? "top-page"
+            : kind === "unit"
+              ? "unit"
+              : ""
   return ["row", depth, dragging ? "dragging" : "", place ? `drop-${place}` : ""].filter(Boolean).join(" ")
 }
 
@@ -1506,17 +1550,19 @@ function ThumbnailButton({
   title,
   src,
   onClick,
+  size = "large",
 }: {
   title: string
   src?: string
   onClick: () => void
+  size?: "large" | "small"
 }) {
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [src])
   const shown = !src || failed ? DEFAULT_THUMBNAIL : src
   return (
     <button
-      className="thumb"
+      className={size === "small" ? "thumb small" : "thumb"}
       type="button"
       aria-label={`Edit thumbnail for ${title}`}
       onClick={(event) => {

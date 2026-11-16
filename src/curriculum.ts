@@ -88,32 +88,35 @@ const unit = (id: string, title: string, items: UnitNode["items"], thumbnail?: s
 })
 
 export const initialOutline: OutlineNode[] = [
-  page("p0", "Course overview", "basic", "practice", cover("#123a5f", "#3d8bfd")),
-  unit("u1", "Unit 1", [
-    module("m1", "Module 1", [page("p1", "Page one"), page("p2", "Page two")], cover("#0e4d6e", "#7fd3e8")),
+  page("p0", "What learners do with an LTI tool", "basic", "practice", cover("#123a5f", "#3d8bfd")),
+  unit("u1", "How a tool launch works", [
+    module("m1", "The launch request", [
+      page("p1", "Who starts the launch"),
+      page("p2", "What the platform sends"),
+    ], cover("#0e4d6e", "#7fd3e8")),
   ], cover("#1f6b4a", "#8fd18a")),
-  unit("u2", "Unit 2", [
-    module("m4", "Module 4", [
-      page("p37", "Page thirty seven"),
-      page("p38", "Page thirty eight"),
-      page("p39", "Page thirty nine"),
+  unit("u2", "People, roles, and privacy", [
+    module("m4", "Names and roles", [
+      page("p37", "Recognizing the learner"),
+      page("p38", "Instructor and learner roles"),
+      page("p39", "When the roster changes"),
     ], cover("#6b3fa0", "#e39adf")),
-    module("m5", "Module 5", [
-      page("p40", "Page forty"),
-      page("p41", "Page forty one"),
-      page("p42", "Page forty two"),
+    module("m5", "What a tool is allowed to see", [
+      page("p40", "Choosing what to share"),
+      page("p41", "Launching without a name"),
+      page("p42", "Asking before sharing more"),
     ]),
   ], cover("#5a2a6a", "#f0a3c8")),
-  unit("u3", "Unit 3", [
-    module("m6", "Module 6", [
-      page("p43", "Page forty three"),
-      page("p44", "Page forty four"),
+  unit("u3", "Scores coming back", [
+    module("m6", "The grade column", [
+      page("p43", "Creating a place for the score"),
+      page("p44", "Returning a result"),
     ]),
   ], cover("#8a4b12", "#f0b27a")),
-  unit("u4", "Unit 4", [
-    module("m7", "Module 7", [
-      page("p45", "Page forty five"),
-      page("p46", "Page forty six"),
+  unit("u4", "Adding a tool to the course", [
+    module("m7", "Placing the link", [
+      page("p45", "Where learners find the tool"),
+      page("p46", "Trying the launch"),
     ]),
   ]),
 ]
