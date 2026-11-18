@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react"
 import {
   CurriculumView,
@@ -45,10 +46,12 @@ import {
 } from "./curriculum"
 
 type Screen = "curriculum" | "all-pages" | "page" | "section"
+type OutlineFocus = { unitId: string; moduleId?: string } | null
+
 type CreateTarget =
   | { kind: "unit" }
   | { kind: "module"; unitId: string }
-  | { kind: "page"; unitId?: string; moduleId?: string }
+  | { kind: "page"; unitId?: string; moduleId?: string; pageType?: PageType; scoringType?: ScoringType }
 
 export default function App() {
   const [outline, setOutline] = useState<OutlineNode[]>(initialOutline)
@@ -67,6 +70,9 @@ export default function App() {
   const [moveId, setMoveId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [thumbnailId, setThumbnailId] = useState<string | null>(null)
+  const [prototypeVersion, setPrototypeVersion] = useState<"a" | "b">("a")
+  const [gallery, setGallery] = useState(false)
+  const [focus, setFocus] = useState<OutlineFocus>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [status, setStatus] = useState("")
   const [dropHint, setDropHint] = useState<{ id: string; place: DropPlace } | null>(null)
@@ -318,6 +324,67 @@ export default function App() {
             <SectionPanel name={sectionName} onBack={openCurriculum} />
           ) : (
             <section className="content" aria-labelledby="curriculum-heading">
+              <VersionSwitch
+                value={prototypeVersion}
+                onChange={(next) => {
+                  setPrototypeVersion(next)
+                  if (next === "a") setGallery(false)
+                  setStatus(
+                    next === "b"
+                      ? "Version B. You can view the entire course as a gallery."
+                      : "Version A. The outline is the only view.",
+                  )
+                }}
+              />
+              {prototypeVersion === "b" ? (
+                <VersionBOutline
+                  gallery={gallery}
+                  onBack={() => {
+                    setGallery(false)
+                    setStatus("Back to the outline.")
+                  }}
+                  onEdit={(id) => setThumbnailId(id)}
+                  outline={outline}
+                  view={view}
+                  openMenu={openMenu}
+                  onChangeView={changeView}
+                  onOpenPage={(id) => showPage(id, "curriculum")}
+                  onToggleMenu={(id) => setOpenMenu(openMenu === id ? null : id)}
+                  onAction={(action, id) => {
+                    setOpenMenu(null)
+                    handleRowAction(action, id, {
+                      setSettingsId,
+                      setMoveId,
+                      setDeleteId,
+                      setOutline,
+                      showPage,
+                      setStatus,
+                    })
+                  }}
+                  focus={focus}
+                  onFocus={(next, message) => {
+                    setFocus(next)
+                    setStatus(message)
+                  }}
+                  onCreatePage={(pageType, scoringType) =>
+                    openCreate({
+                      kind: "page",
+                      pageType,
+                      scoringType,
+                      unitId: focus?.unitId,
+                      moduleId: focus?.moduleId,
+                    })
+                  }
+                  onCreateUnit={() => openCreate({ kind: "unit" })}
+                  onCreateModule={(unitId) => openCreate({ kind: "module", unitId })}
+                  onImport={() => setImportOpen(true)}
+                  onGallery={() => {
+                    setGallery(true)
+                    setStatus("Viewing the entire course as a gallery.")
+                  }}
+                />
+              ) : (
+              <>
               <h2 id="curriculum-heading">Curriculum</h2>
               <p className="lede">
                 {expanded
@@ -473,6 +540,8 @@ export default function App() {
                   Import from Google Docs
                 </button>
               </div>
+              </>
+              )}
             </section>
           )}
         </main>
@@ -987,11 +1056,13 @@ function Grip({
 function MoreMenu({
   open,
   page,
+  plain = false,
   onToggle,
   onAction,
 }: {
   open: boolean
   page: boolean
+  plain?: boolean
   onToggle: (event: MouseEvent) => void
   onAction: (action: string) => void
 }) {
@@ -1012,8 +1083,15 @@ function MoreMenu({
       ]
   return (
     <div className="menu-anchor">
-      <button className="more-button" type="button" aria-label="More options" aria-expanded={open} aria-haspopup="menu" onClick={onToggle}>
-        <img src="/assets/icon-more.svg" alt="" />
+      <button
+        className={plain ? "plain-more" : "more-button"}
+        type="button"
+        aria-label="More options"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={onToggle}
+      >
+        <img src={plain ? "/assets/icon-dots.svg" : "/assets/icon-more.svg"} alt="" />
       </button>
       {open && (
         <div className="menu" role="menu" onClick={(event) => event.stopPropagation()}>
@@ -1175,8 +1253,10 @@ function CreateDialog({
 }) {
   const titleId = useId()
   const [name, setName] = useState("")
-  const [pageType, setPageType] = useState<PageType | "">("")
-  const [scoringType, setScoringType] = useState<ScoringType | "">("")
+  const [pageType, setPageType] = useState<PageType | "">(target.kind === "page" ? target.pageType ?? "" : "")
+  const [scoringType, setScoringType] = useState<ScoringType | "">(
+    target.kind === "page" ? target.scoringType ?? "" : "",
+  )
   const ref = useDialog<HTMLFormElement>(onClose)
   const heading = `Create ${target.kind[0].toUpperCase()}${target.kind.slice(1)}`
   const placeholder =
@@ -1543,6 +1623,450 @@ function ImportDialog({
         </div>
       </form>
     </div>
+  )
+}
+
+function VersionBOutline({
+  outline,
+  view,
+  openMenu,
+  onChangeView,
+  onOpenPage,
+  onToggleMenu,
+  onAction,
+  onCreatePage,
+  onCreateUnit,
+  onCreateModule,
+  onImport,
+  onGallery,
+  onBack,
+  onEdit,
+  onFocus,
+  focus,
+  gallery,
+}: {
+  outline: OutlineNode[]
+  view: CurriculumView
+  openMenu: string | null
+  onChangeView: (next: CurriculumView) => void
+  onOpenPage: (id: string) => void
+  onToggleMenu: (id: string) => void
+  onAction: (action: string, id: string) => void
+  onCreatePage: (pageType: PageType, scoringType: ScoringType) => void
+  onCreateUnit: () => void
+  onCreateModule: (unitId: string) => void
+  onImport: () => void
+  onGallery: () => void
+  onBack: () => void
+  onEdit: (id: string) => void
+  onFocus: (next: OutlineFocus, message: string) => void
+  focus: OutlineFocus
+  gallery: boolean
+}) {
+  const located = focus ? outline.find((node) => node.type === "unit" && node.id === focus.unitId) : undefined
+  const unit = located && located.type === "unit" ? located : undefined
+  const module =
+    unit && focus?.moduleId
+      ? unit.items.find((item) => item.type === "module" && item.id === focus.moduleId)
+      : undefined
+  const activeModule = module && module.type === "module" ? module : undefined
+  const place = activeModule?.title ?? (unit && !focus?.moduleId ? unit.title : "")
+  const rows: Array<
+    | { kind: "page"; id: string; title: string }
+    | { kind: "unit"; id: string; title: string }
+    | { kind: "module"; id: string; unitId: string; title: string }
+  > = activeModule
+    ? activeModule.pages.map((page) => ({ kind: "page", id: page.id, title: page.title }))
+    : unit && focus
+      ? unit.items.map((item) =>
+          item.type === "page"
+            ? { kind: "page", id: item.id, title: item.title }
+            : { kind: "module", id: item.id, unitId: unit.id, title: item.title },
+        )
+      : outline.map((node) =>
+          node.type === "page"
+            ? { kind: "page", id: node.id, title: node.title }
+            : { kind: "unit", id: node.id, title: node.title },
+        )
+  return (
+    <>
+      <div className="b-top">
+        <nav className="b-crumb" aria-label="Curriculum location">
+          {focus && unit ? (
+            <button type="button" onClick={() => onFocus(null, "Back to the course outline.")}>
+              Curriculum
+            </button>
+          ) : (
+            <span aria-current="page">Curriculum</span>
+          )}
+          {unit && (
+            <>
+              <span aria-hidden="true">›</span>
+              {activeModule ? (
+                <button type="button" onClick={() => onFocus({ unitId: unit.id }, `Opened ${unit.title}.`)}>
+                  {unit.title}
+                </button>
+              ) : (
+                <span aria-current="page">{unit.title}</span>
+              )}
+            </>
+          )}
+          {activeModule && (
+            <>
+              <span aria-hidden="true">›</span>
+              <span aria-current="page">{activeModule.title}</span>
+            </>
+          )}
+        </nav>
+        <div className="b-heading-row">
+          <div>
+            <h2 id="curriculum-heading">Curriculum</h2>
+            <p className="lede">Create and arrange your learning materials below.</p>
+          </div>
+          <div className="b-heading-actions">
+            <button className="btn primary" type="button" onClick={onImport}>
+              Import from Google Docs
+            </button>
+            <div className="view-controls">
+              <span id="view-label-b">Curriculum view:</span>
+              <div role="radiogroup" aria-labelledby="view-label-b">
+                {(
+                  [
+                    ["default", "Basic"],
+                    ["detailed", "Detailed"],
+                    ["learning", "Learning"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <label className="view-option" key={value}>
+                    <input
+                      type="radio"
+                      name="curriculum-view-b"
+                      value={value}
+                      checked={view === value}
+                      onChange={() => onChangeView(value)}
+                    />
+                    <span className={view === value ? "radio on" : "radio"}>
+                      {view === value && <img src="/assets/icon-radio.svg" alt="" />}
+                    </span>
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button className="view-toggle" type="button" onClick={gallery ? onBack : onGallery}>
+        {gallery ? "Back to outline" : "View entire course as gallery"}
+      </button>
+      {gallery ? (
+        <GalleryView outline={outline} onEdit={onEdit} />
+      ) : (
+      <>
+      <div className="plain-list" aria-label="Course outline">
+        {rows.length === 0 && (
+          <p className="plain-empty">{place ? `${place} is empty.` : "This course has no curriculum yet."}</p>
+        )}
+        {rows.map((row) =>
+          row.kind === "page" ? (
+            <PlainPageRow
+              key={row.id}
+              title={row.title}
+              menuOpen={openMenu === `page-${row.id}`}
+              onOpen={() => onOpenPage(row.id)}
+              onToggleMenu={() => onToggleMenu(`page-${row.id}`)}
+              onAction={(action) => onAction(action, row.id)}
+            />
+          ) : (
+            <div className="plain-row" key={row.id}>
+              <i className="fas fa-cube plain-icon" aria-hidden="true" />
+              <button
+                className="container-link"
+                type="button"
+                onClick={() =>
+                  row.kind === "unit"
+                    ? onFocus({ unitId: row.id }, `Opened ${row.title}.`)
+                    : onFocus({ unitId: row.unitId, moduleId: row.id }, `Opened ${row.title}.`)
+                }
+              >
+                {row.title}
+              </button>
+              <MoreMenu
+                plain
+                page={false}
+                open={openMenu === `${row.kind}-${row.id}`}
+                onToggle={() => onToggleMenu(`${row.kind}-${row.id}`)}
+                onAction={(action) => onAction(action, row.id)}
+              />
+            </div>
+          ),
+        )}
+      </div>
+      <div className="b-create">
+        <section className="create-panel" aria-labelledby="create-page-heading">
+          <h3 id="create-page-heading">Create a page:</h3>
+          <CreateChoice
+            label="Basic"
+            onPractice={() => onCreatePage("basic", "practice")}
+            onScored={() => onCreatePage("basic", "scored")}
+          />
+          <CreateChoice
+            label="Simple Author"
+            detail="Easily build lessons using templates, simplified interactions, and conditioning."
+            onPractice={() => onCreatePage("simple", "practice")}
+            onScored={() => onCreatePage("simple", "scored")}
+          />
+          <CreateChoice
+            label="Advanced Author"
+            detail="Build complex lessons using extended logic rules and CSS editing."
+            onPractice={() => onCreatePage("advanced", "practice")}
+            onScored={() => onCreatePage("advanced", "scored")}
+          />
+        </section>
+        {activeModule ? null : unit ? (
+          <button className="container-create" type="button" onClick={() => onCreateModule(unit.id)}>
+            Create a Module
+          </button>
+        ) : (
+          <button className="container-create" type="button" onClick={onCreateUnit}>
+            Create a Unit
+          </button>
+        )}
+      </div>
+      </>
+      )}
+    </>
+  )
+}
+
+function PlainPageRow({
+  title,
+  menuOpen,
+  onOpen,
+  onToggleMenu,
+  onAction,
+}: {
+  title: string
+  menuOpen: boolean
+  onOpen: () => void
+  onToggleMenu: () => void
+  onAction: (action: string) => void
+}) {
+  return (
+    <div className="plain-row">
+      <i className="fas fa-file-alt plain-icon" aria-hidden="true" />
+      <span className="plain-title">{title}</span>
+      <button className="edit-page" type="button" onClick={onOpen}>
+        Edit Page
+      </button>
+      <MoreMenu plain page open={menuOpen} onToggle={onToggleMenu} onAction={onAction} />
+    </div>
+  )
+}
+
+function CreateChoice({
+  label,
+  detail,
+  onPractice,
+  onScored,
+}: {
+  label: string
+  detail?: string
+  onPractice: () => void
+  onScored: () => void
+}) {
+  return (
+    <div className="create-choice">
+      <span>
+        {label}
+        {detail && (
+          <button className="info-button" type="button" aria-label={detail}>
+            <img src="/assets/icon-info.svg" alt="" />
+          </button>
+        )}
+      </span>
+      <span className="create-choice-actions">
+        <button className="btn secondary" type="button" onClick={onPractice}>
+          Practice
+        </button>
+        <button className="btn secondary" type="button" onClick={onScored}>
+          Scored
+        </button>
+      </span>
+    </div>
+  )
+}
+
+function VersionSwitch({
+  value,
+  onChange,
+}: {
+  value: "a" | "b"
+  onChange: (next: "a" | "b") => void
+}) {
+  return (
+    <div className="version-switch">
+      <span id="version-label">Prototype:</span>
+      <div role="radiogroup" aria-labelledby="version-label">
+        {(
+          [
+            ["a", "Version A"],
+            ["b", "Version B"],
+          ] as const
+        ).map(([option, label]) => (
+          <label className="view-option" key={option}>
+            <input
+              type="radio"
+              name="prototype-version"
+              value={option}
+              checked={value === option}
+              onChange={() => onChange(option)}
+            />
+            <span className={value === option ? "radio on" : "radio"}>
+              {value === option && <img src="/assets/icon-radio.svg" alt="" />}
+            </span>
+            {label}
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function formatEstimate(pages: number) {
+  const minutes = Math.max(pages, 1) * 15
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  const time = hours && mins ? `${hours}h ${mins}m` : hours ? `${hours}h` : `${mins} min`
+  const count = `${pages} ${pages === 1 ? "page" : "pages"}`
+  return `${count} · ${time}`
+}
+
+function GalleryView({
+  outline,
+  onEdit,
+}: {
+  outline: OutlineNode[]
+  onEdit: (id: string) => void
+}) {
+  const coursePages = outline.filter((node) => node.type === "page")
+  const units = outline.filter((node) => node.type === "unit")
+  return (
+    <div className="gallery">
+      {coursePages.length > 0 && (
+        <section className="gallery-unit" aria-labelledby="gallery-course">
+          <div className="gallery-unit-head">
+            <span className="level">Course</span>
+            <h3 id="gallery-course">Intro to LTI Tools</h3>
+          </div>
+          <GalleryRow>
+            {coursePages.map((page) => (
+              <GalleryCard
+                key={page.id}
+                title={page.title}
+                kind={page.scoringType === "practice" ? "Practice page" : "Scored page"}
+                src={page.thumbnail}
+                detail={formatEstimate(1)}
+                onEdit={() => onEdit(page.id)}
+              />
+            ))}
+          </GalleryRow>
+        </section>
+      )}
+      {units.map((unit) => {
+        const cards = unit.items.flatMap((item) =>
+          item.type === "module"
+            ? [{ id: item.id, title: item.title, kind: "Module", src: item.thumbnail, pages: item.pages.length }]
+            : [{ id: item.id, title: item.title, kind: item.scoringType === "practice" ? "Practice page" : "Scored page", src: item.thumbnail, pages: 1 }],
+        )
+        return (
+          <section className="gallery-unit" key={unit.id} aria-labelledby={`gallery-${unit.id}`}>
+            <div className="gallery-unit-head">
+              <span className="level">Unit</span>
+              <h3 id={`gallery-${unit.id}`}>{unit.title}</h3>
+            </div>
+            {cards.length === 0 ? (
+              <p className="gallery-empty">This unit has nothing for students to see yet.</p>
+            ) : (
+              <GalleryRow>
+                {cards.map((card) => (
+                  <GalleryCard
+                    key={card.id}
+                    title={card.title}
+                    kind={card.kind}
+                    src={card.src}
+                    detail={formatEstimate(card.pages)}
+                    onEdit={() => onEdit(card.id)}
+                  />
+                ))}
+              </GalleryRow>
+            )}
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
+function GalleryRow({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [canScroll, setCanScroll] = useState(false)
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    const check = () => setCanScroll(node.scrollWidth > node.clientWidth + 8)
+    check()
+    const observer = new ResizeObserver(check)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [children])
+  return (
+    <div className="gallery-scroller">
+      <div className="gallery-row" ref={ref} role="list">
+        {children}
+      </div>
+      {canScroll && (
+        <button
+          className="gallery-next"
+          type="button"
+          aria-label="Show more of this unit"
+          onClick={() => {
+            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ref.current?.scrollBy({ left: 310, behavior: reduce ? "auto" : "smooth" })
+          }}
+        >
+          <img src="/assets/icon-chevron-right.svg" alt="" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+function GalleryCard({
+  title,
+  kind,
+  src,
+  detail,
+  onEdit,
+}: {
+  title: string
+  kind: string
+  src?: string
+  detail: string
+  onEdit: () => void
+}) {
+  const shown = src || DEFAULT_THUMBNAIL
+  return (
+    <article className="gallery-card" role="listitem">
+      <img src={shown} alt="" />
+      <div className="gallery-scrim" />
+      <p className="gallery-kind">{kind}</p>
+      <p className="gallery-card-title">{title}</p>
+      <p className="gallery-pill">{detail}</p>
+      <button className="gallery-open" type="button" aria-label={`Edit ${title}`} onClick={onEdit}>
+        <span>Edit</span>
+      </button>
+    </article>
   )
 }
 
