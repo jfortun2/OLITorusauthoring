@@ -331,7 +331,7 @@ export default function App() {
                   if (next === "a") setGallery(false)
                   setStatus(
                     next === "b"
-                      ? "Version B. You can view the entire course as a gallery."
+                      ? "Version B. You can view and edit gallery images."
                       : "Version A. The outline is the only view.",
                   )
                 }}
@@ -341,7 +341,7 @@ export default function App() {
                   gallery={gallery}
                   onBack={() => {
                     setGallery(false)
-                    setStatus("Back to the outline.")
+                    setStatus("Back to the curriculum.")
                   }}
                   onEdit={(id) => setThumbnailId(id)}
                   outline={outline}
@@ -377,10 +377,9 @@ export default function App() {
                   }
                   onCreateUnit={() => openCreate({ kind: "unit" })}
                   onCreateModule={(unitId) => openCreate({ kind: "module", unitId })}
-                  onImport={() => setImportOpen(true)}
                   onGallery={() => {
                     setGallery(true)
-                    setStatus("Viewing the entire course as a gallery.")
+                    setStatus("Opened the course gallery.")
                   }}
                 />
               ) : (
@@ -402,8 +401,7 @@ export default function App() {
                   />
                 </label>
                 <div className="view-controls">
-                  <span id="view-label">Curriculum view:</span>
-                  <div role="radiogroup" aria-labelledby="view-label" style={{ display: "flex", gap: 12 }}>
+                  <div role="radiogroup" aria-label="Curriculum view" style={{ display: "flex", gap: 12 }}>
                     {(
                       [
                         ["default", "Default"],
@@ -605,7 +603,7 @@ export default function App() {
           onClose={() => setThumbnailId(null)}
           onSave={(next) => {
             setOutline((current) => setLearnerCard(current, thumbnail.id, next))
-            setStatus(`Saved the learner card for ${thumbnail.title}.`)
+            setStatus(`Saved the gallery tile for ${thumbnail.title}.`)
             setThumbnailId(null)
           }}
         />
@@ -1456,7 +1454,7 @@ function SettingsDialog({
           <p>Update how this item appears in the curriculum outline.</p>
           {onEditThumbnail && (
             <button className="btn secondary thumb-settings" type="button" onClick={onEditThumbnail}>
-              Edit thumbnail
+              Edit gallery tile
             </button>
           )}
         </div>
@@ -1637,7 +1635,6 @@ function VersionBOutline({
   onCreatePage,
   onCreateUnit,
   onCreateModule,
-  onImport,
   onGallery,
   onBack,
   onEdit,
@@ -1655,7 +1652,6 @@ function VersionBOutline({
   onCreatePage: (pageType: PageType, scoringType: ScoringType) => void
   onCreateUnit: () => void
   onCreateModule: (unitId: string) => void
-  onImport: () => void
   onGallery: () => void
   onBack: () => void
   onEdit: (id: string) => void
@@ -1691,48 +1687,46 @@ function VersionBOutline({
   return (
     <>
       <div className="b-top">
-        <nav className="b-crumb" aria-label="Curriculum location">
-          {focus && unit ? (
+        {!gallery && unit && (
+          <nav className="b-crumb" aria-label="Curriculum location">
             <button type="button" onClick={() => onFocus(null, "Back to the course outline.")}>
               Curriculum
             </button>
-          ) : (
-            <span aria-current="page">Curriculum</span>
-          )}
-          {unit && (
-            <>
-              <span aria-hidden="true">›</span>
-              {activeModule ? (
-                <button type="button" onClick={() => onFocus({ unitId: unit.id }, `Opened ${unit.title}.`)}>
-                  {unit.title}
-                </button>
-              ) : (
-                <span aria-current="page">{unit.title}</span>
-              )}
-            </>
-          )}
-          {activeModule && (
-            <>
-              <span aria-hidden="true">›</span>
-              <span aria-current="page">{activeModule.title}</span>
-            </>
-          )}
-        </nav>
-        <div className="b-heading-row">
-          <div>
-            <h2 id="curriculum-heading">Curriculum</h2>
-            <p className="lede">Create and arrange your learning materials below.</p>
-          </div>
-          <div className="b-heading-actions">
-            <button className="btn primary" type="button" onClick={onImport}>
-              Import from Google Docs
-            </button>
+            <span aria-hidden="true">›</span>
+            {activeModule ? (
+              <button type="button" onClick={() => onFocus({ unitId: unit.id }, `Opened ${unit.title}.`)}>
+                {unit.title}
+              </button>
+            ) : (
+              <span aria-current="page">{unit.title}</span>
+            )}
+            {activeModule && (
+              <>
+                <span aria-hidden="true">›</span>
+                <span aria-current="page">{activeModule.title}</span>
+              </>
+            )}
+          </nav>
+        )}
+        <h2 id="curriculum-heading">{gallery ? "Course Gallery" : "Curriculum"}</h2>
+        <div className="b-lede-row">
+          <p className="lede">
+            {gallery
+              ? "View and edit gallery tiles across the entire course."
+              : "Create and arrange your learning materials below."}
+          </p>
+          <button className="btn secondary gallery-toggle" type="button" onClick={gallery ? onBack : onGallery}>
+            <img src={gallery ? "/assets/icon-list.svg" : "/assets/icon-learn.svg"} alt="" />
+            {gallery ? "Manage curriculum" : "Manage course gallery"}
+          </button>
+        </div>
+        {!gallery && (
+          <div className="b-view-row">
             <div className="view-controls">
-              <span id="view-label-b">Curriculum view:</span>
-              <div role="radiogroup" aria-labelledby="view-label-b">
+              <div role="radiogroup" aria-label="Curriculum view">
                 {(
                   [
-                    ["default", "Basic"],
+                    ["default", "Default"],
                     ["detailed", "Detailed"],
                     ["learning", "Learning"],
                   ] as const
@@ -1754,13 +1748,10 @@ function VersionBOutline({
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
-      <button className="view-toggle" type="button" onClick={gallery ? onBack : onGallery}>
-        {gallery ? "Back to outline" : "View entire course as gallery"}
-      </button>
       {gallery ? (
-        <GalleryView outline={outline} onEdit={onEdit} />
+        <GalleryView outline={outline} onChangeCover={onEdit} />
       ) : (
       <>
       <div className="plain-list" aria-label="Course outline">
@@ -1933,21 +1924,21 @@ function VersionSwitch({
   )
 }
 
-function formatEstimate(pages: number) {
+function formatPill(pages: number) {
   const minutes = Math.max(pages, 1) * 15
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
   const time = hours && mins ? `${hours}h ${mins}m` : hours ? `${hours}h` : `${mins} min`
-  const count = `${pages} ${pages === 1 ? "page" : "pages"}`
-  return `${count} · ${time}`
+  if (pages <= 1) return time
+  return `${pages} pages · ${time}`
 }
 
 function GalleryView({
   outline,
-  onEdit,
+  onChangeCover,
 }: {
   outline: OutlineNode[]
-  onEdit: (id: string) => void
+  onChangeCover: (id: string) => void
 }) {
   const coursePages = outline.filter((node) => node.type === "page")
   const units = outline.filter((node) => node.type === "unit")
@@ -1955,10 +1946,12 @@ function GalleryView({
     <div className="gallery">
       {coursePages.length > 0 && (
         <section className="gallery-unit" aria-labelledby="gallery-course">
-          <div className="gallery-unit-head">
-            <span className="level">Course</span>
-            <h3 id="gallery-course">Intro to LTI Tools</h3>
-          </div>
+            <div className="gallery-unit-head">
+              <p className="gallery-unit-index">
+                <span>Course</span>
+              </p>
+              <h3 id="gallery-course">Intro to LTI Tools</h3>
+            </div>
           <GalleryRow>
             {coursePages.map((page) => (
               <GalleryCard
@@ -1966,23 +1959,27 @@ function GalleryView({
                 title={page.title}
                 kind={page.scoringType === "practice" ? "Practice page" : "Scored page"}
                 src={page.thumbnail}
-                detail={formatEstimate(1)}
-                onEdit={() => onEdit(page.id)}
+                detail={formatPill(1)}
+                video={page.video}
+                onChangeCover={() => onChangeCover(page.id)}
               />
             ))}
           </GalleryRow>
         </section>
       )}
-      {units.map((unit) => {
+      {units.map((unit, index) => {
         const cards = unit.items.flatMap((item) =>
           item.type === "module"
-            ? [{ id: item.id, title: item.title, kind: "Module", src: item.thumbnail, pages: item.pages.length }]
-            : [{ id: item.id, title: item.title, kind: item.scoringType === "practice" ? "Practice page" : "Scored page", src: item.thumbnail, pages: 1 }],
+            ? [{ id: item.id, title: item.title, kind: "Module", src: item.thumbnail, pages: item.pages.length, video: item.video }]
+            : [{ id: item.id, title: item.title, kind: item.scoringType === "practice" ? "Practice page" : "Scored page", src: item.thumbnail, pages: 1, video: item.video }],
         )
         return (
           <section className="gallery-unit" key={unit.id} aria-labelledby={`gallery-${unit.id}`}>
             <div className="gallery-unit-head">
-              <span className="level">Unit</span>
+              <p className="gallery-unit-index">
+                <span>Unit</span>
+                <span>{index + 1}</span>
+              </p>
               <h3 id={`gallery-${unit.id}`}>{unit.title}</h3>
             </div>
             {cards.length === 0 ? (
@@ -1995,8 +1992,9 @@ function GalleryView({
                     title={card.title}
                     kind={card.kind}
                     src={card.src}
-                    detail={formatEstimate(card.pages)}
-                    onEdit={() => onEdit(card.id)}
+                    detail={formatPill(card.pages)}
+                    video={card.video}
+                    onChangeCover={() => onChangeCover(card.id)}
                   />
                 ))}
               </GalleryRow>
@@ -2035,7 +2033,7 @@ function GalleryRow({ children }: { children: ReactNode }) {
             ref.current?.scrollBy({ left: 310, behavior: reduce ? "auto" : "smooth" })
           }}
         >
-          <img src="/assets/icon-chevron-right.svg" alt="" />
+          <img src="/assets/icon-gallery-next.svg" alt="" />
         </button>
       )}
     </div>
@@ -2047,24 +2045,36 @@ function GalleryCard({
   kind,
   src,
   detail,
-  onEdit,
+  video,
+  onChangeCover,
 }: {
   title: string
   kind: string
   src?: string
   detail: string
-  onEdit: () => void
+  video?: string
+  onChangeCover: () => void
 }) {
   const shown = src || DEFAULT_THUMBNAIL
   return (
-    <article className="gallery-card" role="listitem">
+    <article className={video ? "gallery-card has-video" : "gallery-card"} role="listitem">
       <img src={shown} alt="" />
-      <div className="gallery-scrim" />
-      <p className="gallery-kind">{kind}</p>
-      <p className="gallery-card-title">{title}</p>
-      <p className="gallery-pill">{detail}</p>
-      <button className="gallery-open" type="button" aria-label={`Edit ${title}`} onClick={onEdit}>
-        <span>Edit</span>
+      <div className="gallery-scrim" aria-hidden="true" />
+      {video && (
+        <span className="gallery-play" aria-hidden="true">
+          <img src="/assets/icon-play.svg" alt="" />
+        </span>
+      )}
+      <div className="gallery-card-body">
+        <p className="gallery-kind">{kind}</p>
+        <p className="gallery-card-title">{title}</p>
+        <div className="gallery-card-foot">
+          <p className="gallery-pill">{detail}</p>
+        </div>
+      </div>
+      <button className="change-cover" type="button" aria-label={`Edit gallery tile for ${title}`} onClick={onChangeCover}>
+        <img src="/assets/icon-tile-edit.svg" alt="" />
+        Edit
       </button>
     </article>
   )
@@ -2088,7 +2098,7 @@ function ThumbnailButton({
     <button
       className={size === "small" ? "thumb small" : "thumb"}
       type="button"
-      aria-label={`Edit thumbnail for ${title}`}
+      aria-label={`Edit gallery tile for ${title}`}
       onClick={(event) => {
         event.stopPropagation()
         onClick()
@@ -2161,23 +2171,25 @@ function ThumbnailDialog({
   const titleId = useId()
   const noteId = useId()
   const introId = useId()
+  const introHelpId = useId()
   const ref = useDialog<HTMLFormElement>(onClose)
   const [draft, setDraft] = useState(target.thumbnail)
   const [intro, setIntro] = useState(target.intro ?? "")
   const [video, setVideo] = useState(target.video)
   const [videoName, setVideoName] = useState(target.videoName ?? "")
-  const [fileMeta, setFileMeta] = useState<{ name: string; width: number; height: number } | null>(null)
   const [error, setError] = useState("")
   const preview = draft ?? DEFAULT_THUMBNAIL
   const dirty =
     draft !== target.thumbnail ||
     intro.trim() !== (target.intro ?? "") ||
     video !== target.video
+  const noun = target.kind === "unit" ? "unit" : target.kind === "module" ? "module" : "page"
   const kind = target.kind === "unit" ? "Unit" : target.kind === "module" ? "Module" : "Page"
-  const count =
-    target.pageCount === null
-      ? null
-      : `${target.pageCount} ${target.pageCount === 1 ? "page" : "pages"}`
+  const detail = formatPill(target.pageCount ?? 1)
+  const introHelp =
+    target.kind === "page"
+      ? "Appears below the tile when learners open this page."
+      : `Appears below the tile when learners expand this ${noun}.`
 
   const replaceVideo = (next: { url: string; name: string } | null) => {
     setVideo((current) => {
@@ -2192,7 +2204,6 @@ function ThumbnailDialog({
     readImageFile(file).then(
       (image) => {
         setDraft(image.url)
-        setFileMeta({ name: file.name, width: image.width, height: image.height })
         setError("")
       },
       (reason: Error) => setError(reason.message),
@@ -2234,80 +2245,85 @@ function ThumbnailDialog({
         <button className="thumb-close" type="button" aria-label="Close" data-initial-focus="true" onClick={onClose}>
           <img src="/assets/icon-close.svg" alt="" />
         </button>
-        <h2 id={titleId}>Edit Thumbnail</h2>
+        <h2 id={titleId}>Edit Gallery Tile</h2>
         <p id={noteId} className="thumb-note">
-          This is the card learners see. Add an introduction, a cover image, and a video if you want one.
+          Customize how this {noun} appears in the course gallery.
         </p>
-        <label className="field" htmlFor={introId}>
-          <span>Introduction content</span>
+        <div className="thumb-intro">
+          <label htmlFor={introId}>Introduction content</label>
+          <p id={introHelpId}>{introHelp}</p>
           <input
             id={introId}
             value={intro}
-            placeholder="A short introduction for learners"
+            aria-describedby={introHelpId}
+            placeholder="Add a short introduction for learners"
             onChange={(event) => setIntro(event.target.value)}
           />
-        </label>
+        </div>
         <div className="thumb-columns">
           <div className="thumb-column">
-            <div className="learner-card">
+            <p className="thumb-column-title">Tile Image</p>
+            <div className="learner-card" aria-hidden="true">
               <img src={preview} alt="" />
               <div className="learner-scrim" />
               <div className="learner-copy">
                 <p className="learner-kind">{kind}</p>
                 <p className="learner-title">{target.title}</p>
               </div>
-              {count && <p className="learner-count">{count}</p>}
+              <p className="learner-count">{detail}</p>
             </div>
-            <p className="thumb-size">Image Size: 294 x 170 pixels</p>
-            <p className="thumb-file">
-              {!draft && !fileMeta
-                ? "Using the default image."
-                : fileMeta
-                  ? `${fileMeta.name} · ${fileMeta.width} × ${fileMeta.height} px`
-                  : "\u00a0"}
-            </p>
-            <label className="btn primary file-btn">
-              Select new image
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  event.target.value = ""
-                  onPick(file)
-                }}
-              />
-            </label>
+            <p className="thumb-size">Recommended size: 294 × 170 px</p>
+            <div className="thumb-column-actions">
+              <p className="thumb-help">
+                Displayed on the tile. If you add a video, this image becomes the video poster image.
+              </p>
+              <label className="btn primary file-btn">
+                Replace image
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    event.target.value = ""
+                    onPick(file)
+                  }}
+                />
+              </label>
+            </div>
           </div>
-          <div className="thumb-column">
+          <div className="thumb-column video-column">
+            <p className="thumb-column-title">Introductory video (optional)</p>
             <div className="video-drop">
               {video ? (
-                <video src={video} controls />
+                <video src={video} poster={preview} controls aria-label={`Introductory video for ${target.title}`} />
               ) : (
                 <span className="video-plus" aria-hidden="true">
                   <i className="fas fa-plus-circle" />
                 </span>
               )}
             </div>
-            <p className="thumb-size">{video ? "Video selected" : "Video is optional"}</p>
-            <p className="thumb-file">{videoName || "\u00a0"}</p>
-            <label className="btn primary file-btn">
-              Select video
-              <input
-                type="file"
-                accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  event.target.value = ""
-                  onPickVideo(file)
-                }}
-              />
-            </label>
-            {video && (
-              <button className="thumb-link" type="button" onClick={() => replaceVideo(null)}>
-                Remove video
-              </button>
-            )}
+            <div className="thumb-column-actions">
+              <p className="thumb-help">
+                Adds a playable video to the tile. Without one, learners will see the tile image.
+              </p>
+              <label className="btn primary file-btn">
+                {video ? "Replace video" : "Add video"}
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    event.target.value = ""
+                    onPickVideo(file)
+                  }}
+                />
+              </label>
+              {video && (
+                <button className="thumb-link" type="button" onClick={() => replaceVideo(null)}>
+                  Remove video
+                </button>
+              )}
+            </div>
           </div>
         </div>
         {error && (
